@@ -21,23 +21,27 @@ reverse-engineered by the community (e.g.
 ## Multi-child photo filtering
 
 The Tadpoles app shows a confirmation prompt before downloading a photo that has
-other kids tagged in it. That check is client-side only — it isn't a documented
-field in the events API. `tadpole_sync.py` looks for a handful of likely field
-names (`CHILD_LIST_FIELDS`) that might list multiple tagged children, and skips
-any event where one of those has more than one entry. If Tadpoles' real schema
-uses a different field, run:
+other kids tagged in it, but that's a client-side UI check — the events API has
+no documented field naming which children are tagged in a photo. Instead, every
+downloaded image is run through an offline face detector (OpenCV's YuNet model,
+downloaded to `data/` on first use): photos with exactly one detected face are
+kept, photos with more than one face are deleted. Videos aren't filtered this
+way and are always kept.
 
-```
-python tadpole_sync.py --dump-schema
-```
-
-to print a raw event and see what's actually there, then adjust
-`CHILD_LIST_FIELDS` in `tadpole_sync.py` accordingly. Until confirmed, this is a
-best-effort filter, not a guarantee.
+This is verified by `test_face_filter.py` against real one-face/two-face fixture
+photos in `tests/fixtures/`, run automatically on every push by
+`.github/workflows/test.yml`.
 
 ## Local run
 
 ```
 pip install -r requirements.txt
 TADPOLES_EMAIL=you@example.com TADPOLES_PASSWORD=... python tadpole_sync.py
+```
+
+## Running tests
+
+```
+pip install -r requirements-dev.txt
+pytest test_face_filter.py -v
 ```
