@@ -1,0 +1,37 @@
+name: Weekly Tadpoles Photo Sync
+
+on:
+  schedule:
+    # Every Sunday at 13:00 UTC
+    - cron: "0 13 * * 0"
+  workflow_dispatch: {}
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - run: pip install -r requirements.txt
+
+      - name: Sync photos from Tadpoles
+        env:
+          TADPOLES_EMAIL: ${{ secrets.TADPOLES_EMAIL }}
+          TADPOLES_PASSWORD: ${{ secrets.TADPOLES_PASSWORD }}
+          TADPOLES_CHILD_NAME: ${{ vars.TADPOLES_CHILD_NAME || 'YourChild' }}
+          TADPOLES_SYNC_DAYS: "8"
+        run: python tadpole_sync.py
+
+      - name: Commit new photos
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add photos/
+          git diff --cached --quiet || git commit -m "Weekly Tadpoles photo sync"
+          git push
