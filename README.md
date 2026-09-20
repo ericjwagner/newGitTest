@@ -1,15 +1,18 @@
+
 # Tadpoles weekly photo sync
+Uploads your child's photos from Tadpoles to Google Photos every week via
+GitHub Actions.
 
 ![Test](https://github.com/ericjwagner/tadpoles/actions/workflows/test.yml/badge.svg)
 ![License](https://img.shields.io/badge/license-MIT-blue.svg)
 ![Python](https://img.shields.io/badge/python-3.12-blue.svg)
 
-Uploads your child's photos from Tadpoles to Google Photos every week via
-GitHub Actions.
+
+<img width="1280" height="640" alt="social-preview" src="https://github.com/user-attachments/assets/7183dc15-b417-4c5f-bf8b-16e3bdbe53e1" />
 
 ## Why
 
-My daycare posts photos to Tadpoles daily, but there's no way to bulk-export
+My kid's daycare posts photos to [Tadpoles](https://www.tadpoles.com/) daily, but there's no way to bulk-export
 just my kid's solo photos — the app makes you download one at a time, and
 warns you before downloading any photo with other kids in it. This automates
 the whole thing: pull the week's photos, keep only the ones where my kid is
