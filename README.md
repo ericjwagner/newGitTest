@@ -1,9 +1,20 @@
 # Tadpoles weekly photo sync
 
 ![Test](https://github.com/ericjwagner/tadpoles/actions/workflows/test.yml/badge.svg)
+![License](https://img.shields.io/badge/license-MIT-blue.svg)
+![Python](https://img.shields.io/badge/python-3.12-blue.svg)
 
 Uploads your child's photos from Tadpoles to Google Photos every week via
 GitHub Actions.
+
+## Why
+
+My daycare posts photos to Tadpoles daily, but there's no way to bulk-export
+just my kid's solo photos — the app makes you download one at a time, and
+warns you before downloading any photo with other kids in it. This automates
+the whole thing: pull the week's photos, keep only the ones where my kid is
+the only one in frame, and land them in Google Photos without me touching
+anything.
 
 Tadpoles has no first-party API. This uses the unofficial mobile-app API
 reverse-engineered by the community (e.g.
@@ -84,6 +95,18 @@ python tadpole_sync.py
 pip install -r requirements-dev.txt
 pytest test_face_filter.py -v
 ```
+
+## Known limitations
+
+- Face detection can miss real faces at odd angles or in low light, which
+  means the occasional solo photo gets skipped as if it had zero faces. See
+  [Multi-child photo filtering](#multi-child-photo-filtering).
+- The Google refresh token expires every 7 days (unverified personal OAuth
+  app) — see the Google Photos setup section above.
+- Only matches on a single child name (`TADPOLES_CHILD_NAME`); doesn't
+  support syncing photos for multiple kids in one run.
+- Depends on Tadpoles' undocumented API staying stable — see the disclaimer
+  above.
 
 ## License
 
