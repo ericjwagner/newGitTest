@@ -1,11 +1,18 @@
 # Tadpoles weekly photo sync
 
+![Test](https://github.com/ericjwagner/tadpoles/actions/workflows/test.yml/badge.svg)
+
 Uploads your child's photos from Tadpoles to Google Photos every week via
 GitHub Actions.
 
 Tadpoles has no first-party API. This uses the unofficial mobile-app API
 reverse-engineered by the community (e.g.
 [tylerhall/tadpoles-api](https://github.com/tylerhall/tadpoles-api)).
+
+> **Disclaimer:** This talks to a private, undocumented Tadpoles API endpoint
+> that isn't officially supported. It could change or break at any time
+> without notice, and using it is not endorsed by Tadpoles/HiMama. Use at
+> your own risk.
 
 ## Setup
 
@@ -57,10 +64,10 @@ photos, run automatically on every push by `.github/workflows/test.yml`.
 
 ## Avoiding duplicates
 
-Uploaded attachment keys are tracked in `uploaded_keys.txt`, committed back to
-the repo after each run. The sync window is 8 days even though the cron is
-weekly, so a 1-day overlap is expected — `uploaded_keys.txt` is what prevents
-re-uploading anything from that overlap.
+Uploaded attachment keys are tracked in `uploaded_keys.txt`, persisted between
+runs via a GitHub Actions cache (not committed to the repo). The sync window is
+8 days even though the cron is weekly, so a 1-day overlap is expected —
+`uploaded_keys.txt` is what prevents re-uploading anything from that overlap.
 
 ## Local run
 
@@ -77,3 +84,7 @@ python tadpole_sync.py
 pip install -r requirements-dev.txt
 pytest test_face_filter.py -v
 ```
+
+## License
+
+[MIT](LICENSE)

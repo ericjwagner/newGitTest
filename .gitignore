@@ -1,2 +1,6 @@
 __pycache__/
 *.pyc
+.pytest_cache/
+data/
+tests/
+uploaded_keys.txt
