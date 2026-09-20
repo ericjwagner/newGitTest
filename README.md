@@ -25,8 +25,8 @@ reverse-engineered by the community (e.g.
 
 > **Disclaimer:** This talks to a private, undocumented Tadpoles API endpoint
 > that isn't officially supported. It could change or break at any time
-> without notice, and using it is not endorsed by Tadpoles/HiMama. Use at
-> your own risk.
+> without notice, and using it is not endorsed by Tadpoles or Teaching
+> Strategies (Tadpoles' owner). Use at your own risk.
 
 ## Setup
 
