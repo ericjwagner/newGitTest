@@ -49,7 +49,6 @@ def upload_to_library(access_token, file_path, mime_type=None):
     body = {
         "newMediaItems": [
             {
-                "description": filename,
                 "simpleMediaItem": {"fileName": filename, "uploadToken": upload_token},
             }
         ]
