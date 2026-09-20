@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Weekly Tadpoles photo sync for YourChild.
+"""Weekly Tadpoles photo sync for your child.
 
 Logs into Tadpoles using the unofficial mobile-app API (reverse engineered by
 https://github.com/tylerhall/tadpoles-api and other community projects — Tadpoles
@@ -224,7 +224,7 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--email", default=os.environ.get("TADPOLES_EMAIL"))
     parser.add_argument("--password", default=os.environ.get("TADPOLES_PASSWORD"))
-    parser.add_argument("--child-name", default=os.environ.get("TADPOLES_CHILD_NAME", "YourChild"))
+    parser.add_argument("--child-name", default=os.environ.get("TADPOLES_CHILD_NAME"))
     parser.add_argument("--days", type=int, default=int(os.environ.get("TADPOLES_SYNC_DAYS", "8")))
     parser.add_argument("--google-client-id", default=os.environ.get("GOOGLE_CLIENT_ID"))
     parser.add_argument("--google-client-secret", default=os.environ.get("GOOGLE_CLIENT_SECRET"))
@@ -233,6 +233,9 @@ def main():
 
     if not args.email or not args.password:
         print("TADPOLES_EMAIL and TADPOLES_PASSWORD are required (env vars or --email/--password)", file=sys.stderr)
+        return 1
+    if not args.child_name:
+        print("TADPOLES_CHILD_NAME is required (env var or --child-name)", file=sys.stderr)
         return 1
     if not (args.google_client_id and args.google_client_secret and args.google_refresh_token):
         print(

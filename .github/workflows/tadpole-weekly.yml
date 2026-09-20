@@ -24,7 +24,7 @@ jobs:
         env:
           TADPOLES_EMAIL: ${{ secrets.TADPOLES_EMAIL }}
           TADPOLES_PASSWORD: ${{ secrets.TADPOLES_PASSWORD }}
-          TADPOLES_CHILD_NAME: ${{ vars.TADPOLES_CHILD_NAME || 'YourChild' }}
+          TADPOLES_CHILD_NAME: ${{ vars.TADPOLES_CHILD_NAME }}
           TADPOLES_SYNC_DAYS: "8"
           GOOGLE_CLIENT_ID: ${{ secrets.GOOGLE_CLIENT_ID }}
           GOOGLE_CLIENT_SECRET: ${{ secrets.GOOGLE_CLIENT_SECRET }}

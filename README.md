@@ -1,7 +1,7 @@
 # Tadpoles weekly photo sync
 
-Uploads YourChild's photos from Tadpoles to Google Photos every week via GitHub
-Actions.
+Uploads your child's photos from Tadpoles to Google Photos every week via
+GitHub Actions.
 
 Tadpoles has no first-party API. This uses the unofficial mobile-app API
 reverse-engineered by the community (e.g.
@@ -16,8 +16,9 @@ In repo Settings → Secrets and variables → Actions, add secrets:
 - `TADPOLES_PASSWORD` — your **Tadpoles-specific** password (not Google/Apple sign-in;
   create one from the Tadpoles app/site if you normally log in another way)
 
-Optionally add a repo variable `TADPOLES_CHILD_NAME` (defaults to `YourChild`) —
-must exactly match how the child's name appears in Tadpoles' `member_display` field.
+Add a repo variable (Settings → Secrets and variables → Actions → Variables tab)
+`TADPOLES_CHILD_NAME` — must exactly match how your child's name appears in
+Tadpoles' `member_display` field.
 
 ### Google Photos
 
