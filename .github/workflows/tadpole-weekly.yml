@@ -20,18 +20,21 @@ jobs:
 
       - run: pip install -r requirements.txt
 
-      - name: Sync photos from Tadpoles
+      - name: Sync photos from Tadpoles to Google Photos
         env:
           TADPOLES_EMAIL: ${{ secrets.TADPOLES_EMAIL }}
           TADPOLES_PASSWORD: ${{ secrets.TADPOLES_PASSWORD }}
           TADPOLES_CHILD_NAME: ${{ vars.TADPOLES_CHILD_NAME || 'YourChild' }}
           TADPOLES_SYNC_DAYS: "8"
+          GOOGLE_CLIENT_ID: ${{ secrets.GOOGLE_CLIENT_ID }}
+          GOOGLE_CLIENT_SECRET: ${{ secrets.GOOGLE_CLIENT_SECRET }}
+          GOOGLE_REFRESH_TOKEN: ${{ secrets.GOOGLE_REFRESH_TOKEN }}
         run: python tadpole_sync.py
 
-      - name: Commit new photos
+      - name: Commit upload dedup log
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add photos/
-          git diff --cached --quiet || git commit -m "Weekly Tadpoles photo sync"
+          git add uploaded_keys.txt
+          git diff --cached --quiet || git commit -m "Update uploaded photo dedup log"
           git push

@@ -3,27 +3,34 @@
 
 Logs into Tadpoles using the unofficial mobile-app API (reverse engineered by
 https://github.com/tylerhall/tadpoles-api and other community projects — Tadpoles
-has no first-party API), pulls the last N days of events, and downloads photo/video
-attachments.
+has no first-party API), pulls the last N days of events, and uploads photo/video
+attachments straight to Google Photos.
 
 Multi-child detection: Tadpoles' own app blocks downloading a photo that has other
 kids tagged in it (a client-side friction/consent dialog). The events API has no
 documented field naming which children are tagged in a given photo, so that can't
 be checked from the JSON. Instead, each downloaded image is run through an offline
 face detector (OpenCV's YuNet model, fetched to data/ on first use): photos with
-exactly one detected face are kept, photos with more than one are deleted. This
+exactly one detected face are kept, photos with more than one are dropped. This
 mirrors what the friction dialog is actually reacting to. Videos aren't filtered
 this way since they can't be face-counted the same way; they're always kept.
+
+Dedup: uploaded attachment keys are tracked in UPLOADED_KEYS_FILE (a plain text
+list, one key per line) so re-running with an overlapping day window never
+re-uploads the same photo twice.
 """
 
 import argparse
 import os
 import sys
+import tempfile
 import time
 from pathlib import Path
 
 import cv2
 import requests
+
+from google_photos import get_access_token, upload_to_library
 
 DATA_DIR = Path(__file__).parent / "data"
 FACE_MODEL_PATH = DATA_DIR / "face_detection_yunet.onnx"
@@ -32,14 +39,7 @@ FACE_MODEL_URL = (
     "models/face_detection_yunet/face_detection_yunet_2023mar.onnx"
 )
 
-
-def ensure_face_model():
-    if FACE_MODEL_PATH.exists():
-        return
-    DATA_DIR.mkdir(parents=True, exist_ok=True)
-    r = requests.get(FACE_MODEL_URL, timeout=30)
-    r.raise_for_status()
-    FACE_MODEL_PATH.write_bytes(r.content)
+UPLOADED_KEYS_FILE = Path(__file__).parent / "uploaded_keys.txt"
 
 BASE = "https://www.tadpoles.com"
 STANDARD_HEADERS = {
@@ -54,6 +54,16 @@ STANDARD_HEADERS = {
     ),
 }
 
+
+def ensure_face_model():
+    if FACE_MODEL_PATH.exists():
+        return
+    DATA_DIR.mkdir(parents=True, exist_ok=True)
+    r = requests.get(FACE_MODEL_URL, timeout=30)
+    r.raise_for_status()
+    FACE_MODEL_PATH.write_bytes(r.content)
+
+
 def count_faces(image_path):
     """Return the number of faces detected in an image file."""
     ensure_face_model()
@@ -67,6 +77,17 @@ def count_faces(image_path):
     detector.setInputSize((w, h))
     _, faces = detector.detect(img)
     return 0 if faces is None else len(faces)
+
+
+def load_uploaded_keys():
+    if not UPLOADED_KEYS_FILE.exists():
+        return set()
+    return set(UPLOADED_KEYS_FILE.read_text().splitlines())
+
+
+def append_uploaded_key(key):
+    with open(UPLOADED_KEYS_FILE, "a") as f:
+        f.write(key + "\n")
 
 
 class TadpolesClient:
@@ -136,55 +157,65 @@ def extension_for(mime_type):
     return {"image/jpeg": ".jpg", "image/png": ".png", "video/mp4": ".mp4"}.get(mime_type, "")
 
 
-def sync(email, password, child_name, days, out_dir):
+def sync(email, password, child_name, days, google_client_id, google_client_secret, google_refresh_token):
     client = TadpolesClient(email, password)
     client.login()
+
+    access_token = get_access_token(google_client_id, google_client_secret, google_refresh_token)
 
     now = time.time()
     earliest = now - days * 86400
     events = client.events(earliest, now)
 
-    out_dir = Path(out_dir)
-    out_dir.mkdir(parents=True, exist_ok=True)
+    uploaded_keys = load_uploaded_keys()
+    uploaded, skipped_multi_face, skipped_not_child, skipped_already_uploaded = 0, 0, 0, 0
 
-    downloaded, skipped_multi_face, skipped_not_child = 0, 0, 0
+    with tempfile.TemporaryDirectory() as tmp:
+        tmp_dir = Path(tmp)
 
-    for event in events:
-        if event.get("type") != "Activity":
-            continue
-        if event.get("member_display") != child_name:
-            skipped_not_child += 1
-            continue
-
-        event_time = event.get("event_time", now)
-        date_str = time.strftime("%Y-%m-%d_%H-%M-%S", time.localtime(event_time))
-
-        for attachment in event.get("new_attachments", []):
-            key = attachment.get("key")
-            mime_type = attachment.get("mime_type", "")
-            ext = extension_for(mime_type)
-            if not key or not ext:
+        for event in events:
+            if event.get("type") != "Activity":
                 continue
-            filename = out_dir / f"{date_str}-{child_name}-{key}{ext}"
-            if filename.exists():
+            if event.get("member_display") != child_name:
+                skipped_not_child += 1
                 continue
-            client.download_attachment(key, filename)
 
-            if mime_type == "image/jpeg" or mime_type == "image/png":
-                faces = count_faces(filename)
-                if faces != 1:
-                    filename.unlink()
-                    skipped_multi_face += 1
-                    print(f"skipped {filename.name} ({faces} faces detected)")
+            event_time = event.get("event_time", now)
+            date_str = time.strftime("%Y-%m-%d_%H-%M-%S", time.localtime(event_time))
+
+            for attachment in event.get("new_attachments", []):
+                key = attachment.get("key")
+                mime_type = attachment.get("mime_type", "")
+                ext = extension_for(mime_type)
+                if not key or not ext:
+                    continue
+                if key in uploaded_keys:
+                    skipped_already_uploaded += 1
                     continue
 
-            downloaded += 1
-            print(f"downloaded {filename}")
+                filename = tmp_dir / f"{date_str}-{child_name}-{key}{ext}"
+                client.download_attachment(key, filename)
+
+                if mime_type in ("image/jpeg", "image/png"):
+                    faces = count_faces(filename)
+                    if faces != 1:
+                        filename.unlink()
+                        skipped_multi_face += 1
+                        print(f"skipped {filename.name} ({faces} faces detected)")
+                        continue
+
+                upload_to_library(access_token, filename, mime_type=mime_type)
+                append_uploaded_key(key)
+                uploaded_keys.add(key)
+                uploaded += 1
+                print(f"uploaded {filename.name}")
+                filename.unlink()
 
     print(
-        f"done: downloaded={downloaded} "
+        f"done: uploaded={uploaded} "
         f"skipped_multi_face={skipped_multi_face} "
-        f"skipped_not_target_child={skipped_not_child}"
+        f"skipped_not_target_child={skipped_not_child} "
+        f"skipped_already_uploaded={skipped_already_uploaded}"
     )
     return 0
 
@@ -195,14 +226,30 @@ def main():
     parser.add_argument("--password", default=os.environ.get("TADPOLES_PASSWORD"))
     parser.add_argument("--child-name", default=os.environ.get("TADPOLES_CHILD_NAME", "YourChild"))
     parser.add_argument("--days", type=int, default=int(os.environ.get("TADPOLES_SYNC_DAYS", "8")))
-    parser.add_argument("--out-dir", default=os.environ.get("TADPOLES_OUT_DIR", "photos"))
+    parser.add_argument("--google-client-id", default=os.environ.get("GOOGLE_CLIENT_ID"))
+    parser.add_argument("--google-client-secret", default=os.environ.get("GOOGLE_CLIENT_SECRET"))
+    parser.add_argument("--google-refresh-token", default=os.environ.get("GOOGLE_REFRESH_TOKEN"))
     args = parser.parse_args()
 
     if not args.email or not args.password:
         print("TADPOLES_EMAIL and TADPOLES_PASSWORD are required (env vars or --email/--password)", file=sys.stderr)
         return 1
+    if not (args.google_client_id and args.google_client_secret and args.google_refresh_token):
+        print(
+            "GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET and GOOGLE_REFRESH_TOKEN are required",
+            file=sys.stderr,
+        )
+        return 1
 
-    return sync(args.email, args.password, args.child_name, args.days, args.out_dir)
+    return sync(
+        args.email,
+        args.password,
+        args.child_name,
+        args.days,
+        args.google_client_id,
+        args.google_client_secret,
+        args.google_refresh_token,
+    )
 
 
 if __name__ == "__main__":
