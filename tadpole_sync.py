@@ -57,7 +57,9 @@ STANDARD_HEADERS = {
 def count_faces(image_path):
     """Return the number of faces detected in an image file."""
     ensure_face_model()
-    detector = cv2.FaceDetectorYN_create(str(FACE_MODEL_PATH), "", (320, 320))
+    detector = cv2.FaceDetectorYN_create(
+        str(FACE_MODEL_PATH), "", (320, 320), score_threshold=0.5
+    )
     img = cv2.imread(str(image_path))
     if img is None:
         return 0
